@@ -721,13 +721,11 @@ function renderGroupView(groupName){
   const data=groupData(groupName);
   if(!data.length){gb.innerHTML=`<p class="empty">No logged sessions for ${groupName} yet.</p>`;return;}
   const last=data[data.length-1].best;
-  const allBestE=Math.max(...data.map(d=>e1rm(d.best.kg,d.best.reps)));
-  const gain=e1rm(last.kg,last.reps)-e1rm(data[0].best.kg,data[0].best.reps);
+  const firstE=e1rm(data[0].best.kg,data[0].best.reps),lastE=e1rm(last.kg,last.reps);
+  const gainPct=firstE>0?((lastE-firstE)/firstE*100):0;
   gb.innerHTML=`
-    <div class="stat-row">
-      <div class="stat"><div class="k">Last e1RM</div><div class="v">${fmt(e1rm(last.kg,last.reps))}<small>kg</small></div></div>
-      <div class="stat"><div class="k">Best ever</div><div class="v">${fmt(allBestE)}<small>kg</small></div></div>
-      <div class="stat"><div class="k">Gained</div><div class="v" style="color:${gain>0.05?"var(--up)":gain<-0.05?"var(--down)":"var(--ink)"}">${gain>0?"+":""}${fmt(gain)}</div></div>
+    <div class="stat-row" style="grid-template-columns:1fr">
+      <div class="stat"><div class="k">Gained</div><div class="v" style="color:${gainPct>0.5?"var(--up)":gainPct<-0.5?"var(--down)":"var(--ink)"}">${gainPct>0?"+":""}${fmt(gainPct)}<small>%</small></div></div>
     </div>
     <svg class="spark" id="group-spark" viewBox="0 0 300 90" preserveAspectRatio="none"></svg>
     <h2 class="sec">Individual lifts</h2>
@@ -761,18 +759,16 @@ function renderLiftView(id){
   if(!sessions.length){gb.innerHTML=`<p class="empty">No data for this exercise yet.</p>`;return;}
   const exName=id.split("::")[1];
   const lastBest=bestSet(sessions[sessions.length-1]);
-  const allBestE=Math.max(...sessions.map(g=>e1rm(bestSet(g).kg,bestSet(g).reps)));
-  const gain=e1rm(lastBest.kg,lastBest.reps)-e1rm(bestSet(sessions[0]).kg,bestSet(sessions[0]).reps);
+  const firstE=e1rm(bestSet(sessions[0]).kg,bestSet(sessions[0]).reps),lastE=e1rm(lastBest.kg,lastBest.reps);
+  const gainPct=firstE>0?((lastE-firstE)/firstE*100):0;
   gb.innerHTML=`
     <button id="back-btn" class="btn ghost" style="margin-bottom:12px;font-size:13px;padding:10px;display:flex;align-items:center;gap:6px">
       <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M7 1L3 5L7 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       ${activeGroup}
     </button>
     <div class="ex-name" style="font-size:16px;margin-bottom:10px">${exName}</div>
-    <div class="stat-row">
-      <div class="stat"><div class="k">Last best</div><div class="v">${fmt(lastBest.kg)}<small>×${lastBest.reps}</small></div></div>
-      <div class="stat"><div class="k">Best e1RM</div><div class="v">${fmt(allBestE)}<small>kg</small></div></div>
-      <div class="stat"><div class="k">Gained</div><div class="v" style="color:${gain>0.05?"var(--up)":gain<-0.05?"var(--down)":"var(--ink)"}">${gain>0?"+":""}${fmt(gain)}</div></div>
+    <div class="stat-row" style="grid-template-columns:1fr">
+      <div class="stat"><div class="k">Gained</div><div class="v" style="color:${gainPct>0.5?"var(--up)":gainPct<-0.5?"var(--down)":"var(--ink)"}">${gainPct>0?"+":""}${fmt(gainPct)}<small>%</small></div></div>
     </div>
     <svg class="spark" id="ex-spark" viewBox="0 0 300 90" preserveAspectRatio="none"></svg>
     <h2 class="sec">History — newest first</h2>
