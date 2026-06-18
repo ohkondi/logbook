@@ -157,6 +157,15 @@
   }
   .toast.show{opacity:1}
 
+  .outfit-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+  .outfit-chip{
+    background:var(--panel-2);border:2px solid var(--line);color:var(--ink-faint);
+    font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.03em;
+    padding:10px 4px;border-radius:9px;cursor:pointer;transition:.15s;text-align:center;
+  }
+  .outfit-chip.selected{color:#15171a}
+  .outfit-pip{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-right:4px;vertical-align:middle}
+
   .tools{display:flex;gap:8px;margin-top:18px}
   .tools .btn{margin-top:0}
   h2.sec{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin:22px 4px 10px}
@@ -208,6 +217,12 @@
           </select>
         </div>
       </div>
+      <div class="outfit-chips" id="outfit-chips">
+        <button class="outfit-chip" data-outfit="Naked">Naked</button>
+        <button class="outfit-chip" data-outfit="Underwear">Underwear</button>
+        <button class="outfit-chip" data-outfit="Light">Light</button>
+        <button class="outfit-chip" data-outfit="Full">Full</button>
+      </div>
       <div class="datebar" style="margin:12px 0 0">
         <span>When</span><input type="datetime-local" id="bw-date">
       </div>
@@ -241,6 +256,9 @@ const load=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{retur
 const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 let logs=load(K_LOGS,[]);
 let bw=load(K_BW,[]);
+
+const OUTFITS={Naked:"#5b9fd6",Underwear:"#9b7fd4",Light:"#7fb069",Full:"#e3a23c"};
+const outfitColor=o=>OUTFITS[o]||"#646a72";
 
 /* ── default routine ── */
 const DEFAULT_ROUTINE={
@@ -624,6 +642,22 @@ function sparkline(svg,vals){
     `<path d="${d}" fill="none" stroke="#e3a23c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`+
     `<circle cx="${x(vals.length-1).toFixed(1)}" cy="${y(vals[vals.length-1]).toFixed(1)}" r="3" fill="#e3a23c"/>`);
 }
+function bwSparkline(svg,entries){
+  svg.innerHTML="";if(entries.length<2)return;
+  const W=300,H=90,pad=8;
+  const vals=entries.map(e=>e.kg);
+  const min=Math.min(...vals),max=Math.max(...vals),rng=max-min||1;
+  const x=i=>pad+i*(W-2*pad)/(entries.length-1);
+  const y=v=>H-pad-(v-min)/rng*(H-2*pad);
+  const d=vals.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)).join(" ");
+  svg.insertAdjacentHTML("beforeend",
+    `<path d="${d}" fill="none" stroke="rgba(100,106,114,.35)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>`);
+  entries.forEach((en,i)=>{
+    const col=outfitColor(en.outfit);
+    svg.insertAdjacentHTML("beforeend",
+      `<circle cx="${x(i).toFixed(1)}" cy="${y(en.kg).toFixed(1)}" r="${i===entries.length-1?4:3}" fill="${col}" stroke="var(--panel)" stroke-width="1.5"/>`);
+  });
+}
 function renderProgress(){
   renderExPicker();
   const id=$("#ex-picker").value,body=$("#progress-body");
@@ -676,8 +710,14 @@ $("#save-bw").onclick=()=>{
   if(!(kg>0)){toast("Enter a weight");return;}
   const dt=$("#bw-date").value;
   const ts=dt?new Date(dt).getTime():Date.now();
-  bw.push({id:ts+Math.random(),ts,kg,tod:$("#bw-tod").value});
-  save(K_BW,bw);$("#bw-kg").value="";renderBody();toast("Weight logged");
+  const sel=document.querySelector(".outfit-chip.selected");
+  const outfit=sel?sel.dataset.outfit:"";
+  bw.push({id:ts+Math.random(),ts,kg,tod:$("#bw-tod").value,outfit});
+  save(K_BW,bw);$("#bw-kg").value="";
+  document.querySelectorAll(".outfit-chip").forEach(c=>{
+    c.classList.remove("selected");c.style.background="";c.style.borderColor="";c.style.color="";
+  });
+  renderBody();toast("Weight logged");
 };
 function renderBody(){
   const stats=$("#bw-stats"),ul=$("#bw-hist");
@@ -694,16 +734,20 @@ function renderBody(){
     <div class="stat"><div class="k">Latest</div><div class="v">${fmt(last.kg)}<small>kg</small></div></div>
     <div class="stat"><div class="k">7-day avg</div><div class="v">${fmt(avg7)}<small>kg</small></div></div>
     <div class="stat"><div class="k">Net</div><div class="v" style="color:${trend>0.05?'var(--up)':trend<-0.05?'var(--down)':'var(--ink)'}">${trend>0?"+":""}${fmt(trend)}</div></div>`;
-  sparkline($("#bw-spark"),s.map(x=>x.kg));
+  bwSparkline($("#bw-spark"),s);
   ul.innerHTML="";
   [...s].reverse().forEach((en,i,arr)=>{
     const prev=arr[i+1];const dk=prev?en.kg-prev.kg:null;
     const cls=dk==null?"flat":dk>0.05?"up":dk<-0.05?"down":"flat";
     const dTxt=dk==null?"—":(dk>0?"+":"")+fmt(dk);
+    const pip=en.outfit?`<span class="outfit-pip" style="background:${outfitColor(en.outfit)}"></span>${en.outfit}`:"";
     const li=document.createElement("li");
     li.innerHTML=`
       <div class="hist-head">
-        <div><div class="load"><b>${fmt(en.kg)}</b> kg</div><div class="when">${shortDate(en.ts)} · <span class="tod">${en.tod}</span></div></div>
+        <div>
+          <div class="load"><b>${fmt(en.kg)}</b> kg</div>
+          <div class="when">${shortDate(en.ts)} · <span class="tod">${en.tod}</span>${pip?` · <span style="color:var(--ink-dim);display:inline-flex;align-items:center">${pip}</span>`:""}</div>
+        </div>
         <div style="display:flex;align-items:center;gap:6px"><span class="d ${cls}">${dTxt}</span><button class="del">✕</button></div>
       </div>`;
     li.querySelector(".del").onclick=()=>{bw=bw.filter(b=>b.id!==en.id);save(K_BW,bw);renderBody();toast("Entry deleted");};
@@ -764,6 +808,19 @@ const now=new Date();
 $("#train-date").value=nowLocalISO(now);
 $("#bw-date").value=nowLocalISO(now);
 $("#bw-tod").value=todFromDate(now);
+document.querySelectorAll(".outfit-chip").forEach(chip=>{
+  chip.onclick=()=>{
+    const already=chip.classList.contains("selected");
+    document.querySelectorAll(".outfit-chip").forEach(c=>{
+      c.classList.remove("selected");c.style.background="";c.style.borderColor="";c.style.color="";
+    });
+    if(!already){
+      const col=outfitColor(chip.dataset.outfit);
+      chip.classList.add("selected");
+      chip.style.background=col;chip.style.borderColor=col;chip.style.color="#15171a";
+    }
+  };
+});
 renderDaySeg();renderTrain();renderExPicker();
 </script>
 </body>
