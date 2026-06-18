@@ -178,7 +178,10 @@
     </div>
     <div class="seg" id="day-seg"></div>
     <div class="edit-bar">
-      <button class="btn ghost" id="edit-toggle" style="font-size:13px;padding:11px;margin-top:0">✏ Edit exercises</button>
+      <button class="btn ghost" id="edit-toggle" style="font-size:13px;padding:11px;margin-top:0;display:flex;align-items:center;justify-content:center;gap:7px">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 1.5L11.5 4.5L4.5 11.5H1.5V8.5L8.5 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 3L10 6" stroke="currentColor" stroke-width="1.4"/></svg>
+        Edit exercises
+      </button>
     </div>
     <div id="train-list"></div>
     <button class="btn" id="save-session">Log session</button>
@@ -349,7 +352,9 @@ const saveSessionBtn=$("#save-session");
 
 editToggle.onclick=()=>{
   editMode=!editMode;
-  editToggle.textContent=editMode?"Done editing":"✏ Edit exercises";
+  editToggle.innerHTML=editMode
+    ?`<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5L5.5 10L11 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Done`
+    :`<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M8.5 1.5L11.5 4.5L4.5 11.5H1.5V8.5L8.5 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 3L10 6" stroke="currentColor" stroke-width="1.4"/></svg> Edit exercises`;
   editToggle.classList.toggle("danger",editMode);
   saveSessionBtn.style.display=editMode?"none":"";
   renderTrain();
