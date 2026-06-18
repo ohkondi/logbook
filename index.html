@@ -357,6 +357,7 @@ editToggle.onclick=()=>{
     :`<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M8.5 1.5L11.5 4.5L4.5 11.5H1.5V8.5L8.5 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 3L10 6" stroke="currentColor" stroke-width="1.4"/></svg> Edit exercises`;
   editToggle.classList.toggle("danger",editMode);
   saveSessionBtn.style.display=editMode?"none":"";
+  renderDaySeg();
   renderTrain();
 };
 
@@ -764,6 +765,4 @@ $("#train-date").value=nowLocalISO(now);
 $("#bw-date").value=nowLocalISO(now);
 $("#bw-tod").value=todFromDate(now);
 renderDaySeg();renderTrain();renderExPicker();
-</script>
-</body>
-</html>
+</script
