@@ -1,0 +1,19 @@
+{
+  "name": "Strength Logbook",
+  "short_name": "Logbook",
+  "description": "Personal strength training tracker",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#15171a",
+  "theme_color": "#15171a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
