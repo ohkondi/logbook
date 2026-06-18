@@ -408,7 +408,7 @@ function renderDaySeg(){
         saveRoutine();
         renderDaySeg();
         renderTrain();
-        renderExPicker();
+        if(typeof renderExPicker==="function")renderExPicker();
         toast(`Removed ${w}`);
       };
 
