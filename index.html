@@ -360,11 +360,81 @@ editToggle.onclick=()=>{
   renderTrain();
 };
 
-let day_=Object.keys(ROUTINE)[0];
-Object.defineProperty(window,"day",{get:()=>day_,set:v=>{day_=v;}});
+function renameDay(oldName,newName){
+  const entries=Object.entries(ROUTINE);
+  const idx=entries.findIndex(([k])=>k===oldName);
+  if(idx===-1)return;
+  entries[idx]=[newName,entries[idx][1]];
+  ROUTINE=Object.fromEntries(entries);
+  if(day===oldName)day=newName;
+  saveRoutine();
+}
 
 function renderDaySeg(){
   const seg=$("#day-seg");seg.innerHTML="";
+
+  if(editMode){
+    seg.style.gridTemplateColumns="1fr";
+
+    Object.keys(ROUTINE).forEach(w=>{
+      const row=document.createElement("div");
+      row.style.cssText="display:flex;gap:8px";
+
+      const inp=document.createElement("input");
+      inp.className="edit-name-input";
+      inp.style.cssText="flex:1;font-size:13px;padding:10px 12px";
+      inp.value=w;
+
+      const rmv=document.createElement("button");
+      rmv.className="remove-ex";
+      rmv.innerHTML=`<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+      rmv.disabled=Object.keys(ROUTINE).length<=1;
+
+      let prev=w;
+      inp.onblur=()=>{
+        const nv=inp.value.trim();
+        if(!nv||nv===prev){inp.value=prev;return;}
+        if(ROUTINE[nv]!==undefined){inp.value=prev;toast("Name already used");return;}
+        renameDay(prev,nv);
+        prev=nv;
+      };
+
+      rmv.onclick=()=>{
+        if(Object.keys(ROUTINE).length<=1){toast("Need at least one day");return;}
+        const next=Object.keys(ROUTINE).find(d=>d!==w);
+        delete ROUTINE[w];
+        if(day===w)day=next;
+        saveRoutine();
+        renderDaySeg();
+        renderTrain();
+        renderExPicker();
+        toast(`Removed ${w}`);
+      };
+
+      row.appendChild(inp);row.appendChild(rmv);
+      seg.appendChild(row);
+    });
+
+    const addBtn=document.createElement("button");
+    addBtn.className="btn ghost";
+    addBtn.style.cssText="margin-top:0;font-size:13px;padding:10px;display:flex;align-items:center;justify-content:center;gap:6px";
+    addBtn.innerHTML=`<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2V11M2 6.5H11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Add day`;
+    addBtn.onclick=()=>{
+      let name="New Day";let i=2;
+      while(ROUTINE[name]!==undefined)name=`New Day ${i++}`;
+      ROUTINE[name]=[];
+      day=name;
+      saveRoutine();
+      renderDaySeg();
+      renderTrain();
+      renderExPicker();
+      toast(`Added ${name}`);
+    };
+    seg.appendChild(addBtn);
+    return;
+  }
+
+  seg.style.gridTemplateColumns="";
   Object.keys(ROUTINE).forEach(w=>{
     const b=document.createElement("button");
     b.textContent=w;if(w===day)b.classList.add("active");
