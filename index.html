@@ -166,6 +166,14 @@
   .outfit-chip.selected{color:#15171a}
   .outfit-pip{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-right:4px;vertical-align:middle}
 
+  .mg-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .mg-chip{background:none;border:1px solid;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.03em;padding:7px 13px;border-radius:20px;cursor:pointer;transition:.12s;white-space:nowrap}
+  .mg-chip.no-data{opacity:.35;cursor:default}
+  .mg-edit-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+  .mg-edit-chip{background:none;border:1px solid;font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.03em;padding:5px 10px;border-radius:14px;cursor:pointer;transition:.12s;white-space:nowrap}
+  .lift-card{cursor:pointer;transition:.1s}
+  .lift-card:active{transform:translateY(1px)}
+
   .tools{display:flex;gap:8px;margin-top:18px}
   .tools .btn{margin-top:0}
   h2.sec{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin:22px 4px 10px}
@@ -198,7 +206,6 @@
 
   <!-- PROGRESS -->
   <section class="view" id="view-progress">
-    <select class="picker" id="ex-picker"></select>
     <div id="progress-body"></div>
   </section>
 
@@ -259,6 +266,8 @@ let bw=load(K_BW,[]);
 
 const OUTFITS={Naked:"#5b9fd6",Underwear:"#9b7fd4",Light:"#7fb069",Full:"#e3a23c"};
 const outfitColor=o=>OUTFITS[o]||"#646a72";
+const MUSCLE_GROUPS={Chest:"#e07060",Back:"#4db8a4",Shoulders:"#d4a843",Quads:"#5b9fd6",Hamstrings:"#9b7fd4",Arms:"#7fb069",Calves:"#e8956d",Core:"#c47fb5"};
+let activeGroup=null,activeLift=null;
 
 /* ── default routine ── */
 const DEFAULT_ROUTINE={
@@ -426,7 +435,6 @@ function renderDaySeg(){
         saveRoutine();
         renderDaySeg();
         renderTrain();
-        if(typeof renderExPicker==="function")renderExPicker();
         toast(`Removed ${w}`);
       };
 
@@ -446,7 +454,6 @@ function renderDaySeg(){
       saveRoutine();
       renderDaySeg();
       renderTrain();
-      renderExPicker();
       toast(`Added ${name}`);
     };
     seg.appendChild(addBtn);
@@ -520,8 +527,29 @@ function renderTrain(){
   });
 }
 
+function mgEditChipsHtml(current){
+  return Object.entries(MUSCLE_GROUPS).map(([g,col])=>{
+    const on=current===g;
+    return `<button class="mg-edit-chip${on?" active":""}" data-group="${g}" style="border-color:${on?col:col+"55"};${on?`background:${col};color:#15171a`:`color:var(--ink-faint)`}">${g}</button>`;
+  }).join("");
+}
+function bindMgChips(container,getIdx){
+  container.querySelectorAll(".mg-edit-chip").forEach(chip=>{
+    chip.onclick=()=>{
+      const g=chip.dataset.group,col=MUSCLE_GROUPS[g],on=chip.classList.contains("active");
+      container.querySelectorAll(".mg-edit-chip").forEach(c=>{
+        c.classList.remove("active");c.style.background="";c.style.borderColor=MUSCLE_GROUPS[c.dataset.group]+"55";c.style.color="var(--ink-faint)";
+      });
+      const idx=getIdx();
+      if(!on){chip.classList.add("active");chip.style.background=col;chip.style.borderColor=col;chip.style.color="#15171a";ROUTINE[day][idx][4]=g;}
+      else{ROUTINE[day][idx][4]="";}
+      saveRoutine();
+    };
+  });
+}
 function renderEditList(list){
   ROUTINE[day].forEach(([name,sch,defKg,defReps],idx)=>{
+    const defMg=ROUTINE[day][idx][4]||"";
     const card=document.createElement("div");
     card.className="card";
     card.innerHTML=`
@@ -537,7 +565,8 @@ function renderEditList(list){
         <div class="field"><label>default reps</label>
           <input type="number" inputmode="numeric" class="in-reps" value="${defReps}" placeholder="—">
         </div>
-      </div>`;
+      </div>
+      <div class="mg-edit-chips">${mgEditChipsHtml(defMg)}</div>`;
 
     const nameI=card.querySelector(".edit-name-input");
     const schI=card.querySelector(".edit-scheme-input");
@@ -545,30 +574,22 @@ function renderEditList(list){
     const repI=card.querySelector(".in-reps");
 
     const persist=()=>{
-      ROUTINE[day][idx]=[
-        nameI.value.trim()||name,
-        schI.value.trim()||sch,
-        parseFloat(kgI.value)||"",
-        parseInt(repI.value)||""
-      ];
+      ROUTINE[day][idx]=[nameI.value.trim()||name,schI.value.trim()||sch,parseFloat(kgI.value)||"",parseInt(repI.value)||"",ROUTINE[day][idx][4]||""];
       saveRoutine();
     };
     nameI.oninput=schI.oninput=kgI.oninput=repI.oninput=persist;
+    bindMgChips(card,()=>idx);
 
     card.querySelector(".remove-ex").onclick=()=>{
       if(ROUTINE[day].length<=1){toast("Need at least one exercise");return;}
-      ROUTINE[day].splice(idx,1);
-      saveRoutine();
-      renderTrain();
-      toast("Exercise removed");
+      ROUTINE[day].splice(idx,1);saveRoutine();renderTrain();toast("Exercise removed");
     };
     list.appendChild(card);
   });
 
   /* Add exercise card */
   const addCard=document.createElement("div");
-  addCard.className="card";
-  addCard.style.borderStyle="dashed";
+  addCard.className="card";addCard.style.borderStyle="dashed";
   addCard.innerHTML=`
     <div class="edit-row">
       <input id="new-name" class="edit-name-input" placeholder="Exercise name">
@@ -582,7 +603,20 @@ function renderEditList(list){
         <input type="number" inputmode="numeric" id="new-reps" class="in-reps" placeholder="—">
       </div>
     </div>
+    <div class="mg-edit-chips" id="new-mg-chips" style="margin-bottom:10px">${mgEditChipsHtml("")}</div>
     <button class="btn" id="add-ex-btn" style="margin-top:0">Add exercise</button>`;
+
+  let newMg="";
+  addCard.querySelectorAll(".mg-edit-chip").forEach(chip=>{
+    chip.onclick=()=>{
+      const g=chip.dataset.group,col=MUSCLE_GROUPS[g],on=chip.classList.contains("active");
+      addCard.querySelectorAll(".mg-edit-chip").forEach(c=>{
+        c.classList.remove("active");c.style.background="";c.style.borderColor=MUSCLE_GROUPS[c.dataset.group]+"55";c.style.color="var(--ink-faint)";
+      });
+      if(!on){chip.classList.add("active");chip.style.background=col;chip.style.borderColor=col;chip.style.color="#15171a";newMg=g;}
+      else newMg="";
+    };
+  });
 
   addCard.querySelector("#add-ex-btn").onclick=()=>{
     const name=addCard.querySelector("#new-name").value.trim();
@@ -590,10 +624,8 @@ function renderEditList(list){
     const kg=parseFloat(addCard.querySelector("#new-kg").value)||"";
     const reps=parseInt(addCard.querySelector("#new-reps").value)||"";
     if(!name){toast("Enter an exercise name");return;}
-    ROUTINE[day].push([name,sch,kg,reps]);
-    saveRoutine();
-    renderTrain();
-    toast(`Added ${name}`);
+    ROUTINE[day].push([name,sch,kg,reps,newMg]);
+    saveRoutine();renderTrain();toast(`Added ${name}`);
   };
   list.appendChild(addCard);
 }
@@ -617,17 +649,157 @@ $("#save-session").onclick=()=>{
 };
 
 /* ── PROGRESS ── */
-function renderExPicker(){
-  const sel=$("#ex-picker");const prev=sel.value;sel.innerHTML="";
-  for(const w in ROUTINE){
-    const g=document.createElement("optgroup");g.label=w;
-    ROUTINE[w].forEach(([name])=>{
-      const o=document.createElement("option");o.value=exId(w,name);o.textContent=name;g.appendChild(o);
-    });
-    sel.appendChild(g);
+function hexToRgba(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`rgba(${r},${g},${b},${a})`;}
+function groupData(groupName){
+  const ids=new Set();
+  for(const w in ROUTINE)ROUTINE[w].forEach(ex=>{if((ex[4]||"")===groupName)ids.add(exId(w,ex[0]));});
+  const byDay={};
+  logs.filter(l=>ids.has(l.exId)).forEach(l=>{
+    const dk=new Date(l.ts).toDateString();
+    if(!byDay[dk])byDay[dk]={ts:l.ts,sets:[]};
+    byDay[dk].sets.push(l);byDay[dk].ts=Math.min(byDay[dk].ts,l.ts);
+  });
+  return Object.values(byDay).sort((a,b)=>a.ts-b.ts)
+    .map(d=>({ts:d.ts,best:d.sets.reduce((b,e)=>e1rm(e.kg,e.reps)>e1rm(b.kg,b.reps)?e:b)}));
+}
+function groupSparkline(svg,data,col){
+  svg.innerHTML="";if(data.length<2)return;
+  const W=300,H=90,pad=8;
+  const vals=data.map(d=>e1rm(d.best.kg,d.best.reps));
+  const min=Math.min(...vals),max=Math.max(...vals),rng=max-min||1;
+  const x=i=>pad+i*(W-2*pad)/(data.length-1);
+  const y=v=>H-pad-(v-min)/rng*(H-2*pad);
+  const d=vals.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)).join(" ");
+  const area=d+` L ${x(vals.length-1).toFixed(1)} ${H-pad} L ${x(0).toFixed(1)} ${H-pad} Z`;
+  svg.insertAdjacentHTML("beforeend",
+    `<path d="${area}" fill="${hexToRgba(col,.1)}"/>`+
+    `<path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`+
+    `<circle cx="${x(vals.length-1).toFixed(1)}" cy="${y(vals[vals.length-1]).toFixed(1)}" r="3" fill="${col}"/>`);
+}
+function miniSparkline(svg,vals,col){
+  if(vals.length<2)return;
+  const W=120,H=40,pad=4;
+  const min=Math.min(...vals),max=Math.max(...vals),rng=max-min||1;
+  const x=i=>pad+i*(W-2*pad)/(vals.length-1);
+  const y=v=>H-pad-(v-min)/rng*(H-2*pad);
+  const d=vals.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)).join(" ");
+  svg.insertAdjacentHTML("beforeend",
+    `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>`+
+    `<circle cx="${x(vals.length-1).toFixed(1)}" cy="${y(vals[vals.length-1]).toFixed(1)}" r="2.5" fill="${col}"/>`);
+}
+function renderProgress(){
+  const body=$("#progress-body");
+  const anyAssigned=Object.values(ROUTINE).some(d=>d.some(ex=>ex[4]));
+  if(!anyAssigned){
+    body.innerHTML=`<p class="empty">Go to Edit mode and tap a muscle group on each exercise — progress will chart here automatically.</p>`;
+    return;
   }
-  if(prev)sel.value=prev;
-  sel.onchange=renderProgress;
+  const dataGroups=new Set();
+  for(const w in ROUTINE)ROUTINE[w].forEach(ex=>{const mg=ex[4]||"";if(mg&&logs.some(l=>l.exId===exId(w,ex[0])))dataGroups.add(mg);});
+  const assignedGroups=new Set();
+  for(const w in ROUTINE)ROUTINE[w].forEach(ex=>{if(ex[4])assignedGroups.add(ex[4]);});
+  if(activeGroup&&!dataGroups.has(activeGroup))activeGroup=null;
+  const chipsHtml=Object.keys(MUSCLE_GROUPS).filter(g=>assignedGroups.has(g)).map(g=>{
+    const col=MUSCLE_GROUPS[g],hasData=dataGroups.has(g),isActive=activeGroup===g;
+    return `<button class="mg-chip${hasData?"":" no-data"}" data-group="${g}" data-has="${hasData?1:0}"
+      style="border-color:${col};color:${isActive?"#15171a":col};${isActive?`background:${col}`:""}">${g}</button>`;
+  }).join("");
+  body.innerHTML=`<div class="mg-chips">${chipsHtml}</div><div id="group-body"></div>`;
+  body.querySelectorAll(".mg-chip").forEach(chip=>{
+    chip.onclick=()=>{
+      if(!parseInt(chip.dataset.has)){toast("Log "+chip.dataset.group+" exercises first");return;}
+      activeGroup=chip.dataset.group;activeLift=null;renderProgress();
+    };
+  });
+  if(!activeGroup){
+    $("#group-body").innerHTML=`<p class="empty" style="margin-top:4px">Select a muscle group above.</p>`;return;
+  }
+  activeLift?renderLiftView(activeLift):renderGroupView(activeGroup);
+}
+function renderGroupView(groupName){
+  const col=MUSCLE_GROUPS[groupName],gb=$("#group-body");
+  const data=groupData(groupName);
+  if(!data.length){gb.innerHTML=`<p class="empty">No logged sessions for ${groupName} yet.</p>`;return;}
+  const last=data[data.length-1].best;
+  const allBestE=Math.max(...data.map(d=>e1rm(d.best.kg,d.best.reps)));
+  const gain=e1rm(last.kg,last.reps)-e1rm(data[0].best.kg,data[0].best.reps);
+  gb.innerHTML=`
+    <div class="stat-row">
+      <div class="stat"><div class="k">Last e1RM</div><div class="v">${fmt(e1rm(last.kg,last.reps))}<small>kg</small></div></div>
+      <div class="stat"><div class="k">Best ever</div><div class="v">${fmt(allBestE)}<small>kg</small></div></div>
+      <div class="stat"><div class="k">Gained</div><div class="v" style="color:${gain>0.05?"var(--up)":gain<-0.05?"var(--down)":"var(--ink)"}">${gain>0?"+":""}${fmt(gain)}</div></div>
+    </div>
+    <svg class="spark" id="group-spark" viewBox="0 0 300 90" preserveAspectRatio="none"></svg>
+    <h2 class="sec">Individual lifts</h2>
+    <div id="lift-list"></div>`;
+  groupSparkline($("#group-spark"),data,col);
+  const liftList=$("#lift-list");
+  const exercises=[];
+  for(const w in ROUTINE)ROUTINE[w].forEach(ex=>{if((ex[4]||"")===groupName)exercises.push({id:exId(w,ex[0]),name:ex[0]});});
+  exercises.forEach(({id,name})=>{
+    const sessions=sessionGroups(id);if(!sessions.length)return;
+    const lb=bestSet(sessions[sessions.length-1]);
+    const vals=sessions.map(g=>e1rm(bestSet(g).kg,bestSet(g).reps));
+    const card=document.createElement("div");card.className="card lift-card";
+    card.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div style="min-width:0">
+          <div class="ex-name" style="margin-bottom:3px">${name}</div>
+          <div class="ex-last">last <b>${fmt(lb.kg)}</b>×${lb.reps} · ${sessions.length} session${sessions.length>1?"s":""}</div>
+        </div>
+        <svg viewBox="0 0 120 40" preserveAspectRatio="none" style="width:80px;height:34px;flex-shrink:0;background:var(--panel-2);border:1px solid var(--line);border-radius:6px"></svg>
+      </div>`;
+    miniSparkline(card.querySelector("svg"),vals,col);
+    card.onclick=()=>{activeLift=id;renderProgress();};
+    liftList.appendChild(card);
+  });
+  if(!liftList.children.length)liftList.innerHTML=`<p class="empty">Log some ${groupName} sessions to see individual lift data.</p>`;
+}
+function renderLiftView(id){
+  const gb=$("#group-body"),col=MUSCLE_GROUPS[activeGroup]||"#e3a23c";
+  const sessions=sessionGroups(id);
+  if(!sessions.length){gb.innerHTML=`<p class="empty">No data for this exercise yet.</p>`;return;}
+  const exName=id.split("::")[1];
+  const lastBest=bestSet(sessions[sessions.length-1]);
+  const allBestE=Math.max(...sessions.map(g=>e1rm(bestSet(g).kg,bestSet(g).reps)));
+  const gain=e1rm(lastBest.kg,lastBest.reps)-e1rm(bestSet(sessions[0]).kg,bestSet(sessions[0]).reps);
+  gb.innerHTML=`
+    <button id="back-btn" class="btn ghost" style="margin-bottom:12px;font-size:13px;padding:10px;display:flex;align-items:center;gap:6px">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M7 1L3 5L7 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      ${activeGroup}
+    </button>
+    <div class="ex-name" style="font-size:16px;margin-bottom:10px">${exName}</div>
+    <div class="stat-row">
+      <div class="stat"><div class="k">Last best</div><div class="v">${fmt(lastBest.kg)}<small>×${lastBest.reps}</small></div></div>
+      <div class="stat"><div class="k">Best e1RM</div><div class="v">${fmt(allBestE)}<small>kg</small></div></div>
+      <div class="stat"><div class="k">Gained</div><div class="v" style="color:${gain>0.05?"var(--up)":gain<-0.05?"var(--down)":"var(--ink)"}">${gain>0?"+":""}${fmt(gain)}</div></div>
+    </div>
+    <svg class="spark" id="ex-spark" viewBox="0 0 300 90" preserveAspectRatio="none"></svg>
+    <h2 class="sec">History — newest first</h2>
+    <ul class="hist" id="ex-hist"></ul>`;
+  groupSparkline($("#ex-spark"),sessions.map(g=>({ts:g[0].ts,best:bestSet(g)})),col);
+  $("#back-btn").onclick=()=>{activeLift=null;renderProgress();};
+  const ul=$("#ex-hist");
+  [...sessions].reverse().forEach((group,i,arr)=>{
+    const prevGroup=arr[i+1];
+    const best=bestSet(group),prevBest=prevGroup?bestSet(prevGroup):null;
+    const de=prevBest?e1rm(best.kg,best.reps)-e1rm(prevBest.kg,prevBest.reps):null;
+    const cls=de==null?"flat":de>0.05?"up":de<-0.05?"down":"flat";
+    const dTxt=de==null?"—":(de>0?"+":"")+fmt(de);
+    const setsHtml=group.map(e=>`<span><b>${fmt(e.kg)}</b>×${e.reps}</span>`).join("");
+    const li=document.createElement("li");
+    li.innerHTML=`
+      <div class="hist-head">
+        <span class="when">${shortDate(group[0].ts)}</span>
+        <div style="display:flex;align-items:center;gap:6px"><span class="d ${cls}">${dTxt}</span><button class="del">✕</button></div>
+      </div>
+      <div class="sets-summary">${setsHtml}</div>`;
+    li.querySelector(".del").onclick=()=>{
+      const ts=group[0].ts;logs=logs.filter(l=>!(l.exId===id&&l.ts===ts));
+      save(K_LOGS,logs);renderProgress();toast("Session deleted");
+    };
+    ul.appendChild(li);
+  });
 }
 function sparkline(svg,vals){
   svg.innerHTML="";if(vals.length<2)return;
@@ -658,52 +830,6 @@ function bwSparkline(svg,entries){
       `<circle cx="${x(i).toFixed(1)}" cy="${y(en.kg).toFixed(1)}" r="${i===entries.length-1?4:3}" fill="${col}" stroke="var(--panel)" stroke-width="1.5"/>`);
   });
 }
-function renderProgress(){
-  renderExPicker();
-  const id=$("#ex-picker").value,body=$("#progress-body");
-  const sessions=sessionGroups(id);
-  if(!sessions.length){body.innerHTML=`<p class="empty">No entries yet.<br>Log this lift on the Train tab and it'll chart here.</p>`;return;}
-  const lastGroup=sessions[sessions.length-1],firstGroup=sessions[0];
-  const lastBest=bestSet(lastGroup),firstBest=bestSet(firstGroup);
-  const allBestE=Math.max(...sessions.map(g=>e1rm(bestSet(g).kg,bestSet(g).reps)));
-  const gain=e1rm(lastBest.kg,lastBest.reps)-e1rm(firstBest.kg,firstBest.reps);
-  body.innerHTML=`
-    <div class="stat-row">
-      <div class="stat"><div class="k">Last best</div><div class="v">${fmt(lastBest.kg)}<small>×${lastBest.reps}</small></div></div>
-      <div class="stat"><div class="k">Best e1RM</div><div class="v">${fmt(allBestE)}<small>kg</small></div></div>
-      <div class="stat"><div class="k">Since start</div><div class="v" style="color:${gain>0.05?'var(--up)':gain<-0.05?'var(--down)':'var(--ink)'}">${gain>0?"+":""}${fmt(gain)}</div></div>
-    </div>
-    <svg class="spark" id="ex-spark" viewBox="0 0 300 90" preserveAspectRatio="none"></svg>
-    <h2 class="sec">History — newest first</h2>
-    <ul class="hist" id="ex-hist"></ul>`;
-  sparkline($("#ex-spark"),sessions.map(g=>e1rm(bestSet(g).kg,bestSet(g).reps)));
-  const ul=$("#ex-hist");
-  [...sessions].reverse().forEach((group,i,arr)=>{
-    const prevGroup=arr[i+1];
-    const best=bestSet(group),prevBest=prevGroup?bestSet(prevGroup):null;
-    const de=prevBest?e1rm(best.kg,best.reps)-e1rm(prevBest.kg,prevBest.reps):null;
-    const cls=de==null?"flat":de>0.05?"up":de<-0.05?"down":"flat";
-    const dTxt=de==null?"—":(de>0?"+":"")+fmt(de);
-    const setsHtml=group.map(e=>`<span><b>${fmt(e.kg)}</b>×${e.reps}</span>`).join("");
-    const li=document.createElement("li");
-    li.innerHTML=`
-      <div class="hist-head">
-        <span class="when">${shortDate(group[0].ts)}</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span class="d ${cls}">${dTxt}</span>
-          <button class="del" title="Delete session">✕</button>
-        </div>
-      </div>
-      <div class="sets-summary">${setsHtml}</div>`;
-    li.querySelector(".del").onclick=()=>{
-      const ts=group[0].ts;
-      logs=logs.filter(l=>!(l.exId===id&&l.ts===ts));
-      save(K_LOGS,logs);renderProgress();toast("Session deleted");
-    };
-    ul.appendChild(li);
-  });
-}
-
 /* ── BODY ── */
 $("#save-bw").onclick=()=>{
   const kg=parseFloat($("#bw-kg").value);
@@ -774,7 +900,8 @@ $("#import-file").onchange=ev=>{
       if(d.routine&&typeof d.routine==="object"){ROUTINE=d.routine;saveRoutine();}
       save(K_LOGS,logs);save(K_BW,bw);
       day=Object.keys(ROUTINE)[0];
-      renderDaySeg();renderTrain();renderExPicker();
+      activeGroup=null;activeLift=null;
+      renderDaySeg();renderTrain();
       toast("Backup restored");
     }catch{toast("Couldn't read that file");}
   };
@@ -821,7 +948,7 @@ document.querySelectorAll(".outfit-chip").forEach(chip=>{
     }
   };
 });
-renderDaySeg();renderTrain();renderExPicker();
+renderDaySeg();renderTrain();
 </script>
 </body>
 </html>
