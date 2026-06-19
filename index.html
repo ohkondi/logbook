@@ -28,9 +28,11 @@
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0}
+  html{height:-webkit-fill-available}
   body{
     background:var(--bg);color:var(--ink);font-family:var(--sans);
     font-size:16px;line-height:1.45;
+    min-height:100vh;min-height:-webkit-fill-available;
     padding-bottom:calc(72px + env(safe-area-inset-bottom));
     -webkit-font-smoothing:antialiased;
   }
