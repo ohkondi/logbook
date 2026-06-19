@@ -1022,17 +1022,9 @@ document.getElementById('logout-btn').onclick=()=>{
 /* ── apple-touch-icon via canvas ── */
 (function(){
   const c=document.createElement("canvas");c.width=c.height=192;
-  const ctx=c.getContext("2d"),r=38;
-  ctx.beginPath();
-  ctx.moveTo(r,0);ctx.lineTo(192-r,0);ctx.quadraticCurveTo(192,0,192,r);
-  ctx.lineTo(192,192-r);ctx.quadraticCurveTo(192,192,192-r,192);
-  ctx.lineTo(r,192);ctx.quadraticCurveTo(0,192,0,192-r);
-  ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);ctx.closePath();
-  ctx.fillStyle="#15171a";ctx.fill();
-  ctx.fillStyle="#e3a23c";
-  ctx.font="bold 108px -apple-system,sans-serif";
-  ctx.textAlign="center";ctx.textBaseline="middle";
-  ctx.fillText("L",96,100);
+  const ctx=c.getContext("2d");
+  ctx.beginPath();ctx.arc(96,96,72,0,Math.PI*2);
+  ctx.fillStyle="#e3a23c";ctx.fill();
   document.getElementById("ati").href=c.toDataURL("image/png");
 })();
 
