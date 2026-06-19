@@ -351,18 +351,14 @@ const DEFAULT_ROUTINE={
 /* Load custom routine if saved, otherwise use default */
 let ROUTINE=load(K_ROUTINE,null)||JSON.parse(JSON.stringify(DEFAULT_ROUTINE));
 
-/* ── backfill muscle groups from DEFAULT_ROUTINE by name ── */
-(()=>{
+function backfillMuscleGroups(){
   const lookup={};
   for(const w in DEFAULT_ROUTINE)DEFAULT_ROUTINE[w].forEach(ex=>{if(ex[4])lookup[ex[0]]=ex[4];});
-  let changed=false;
   for(const w in ROUTINE){
-    ROUTINE[w].forEach(ex=>{
-      if(!ex[4]&&lookup[ex[0]]){ex[4]=lookup[ex[0]];changed=true;}
-    });
+    ROUTINE[w].forEach(ex=>{if(!ex[4]&&lookup[ex[0]])ex[4]=lookup[ex[0]];});
   }
-  if(changed)save(K_ROUTINE,ROUTINE);
-})();
+}
+backfillMuscleGroups();save(K_ROUTINE,ROUTINE);
 let _routineTimer;
 function saveRoutine(){save(K_ROUTINE,ROUTINE);clearTimeout(_routineTimer);_routineTimer=setTimeout(pushCloud,3000);}
 
@@ -987,9 +983,11 @@ async function pullCloud(){
     const d=await r.json();
     if(d.logs)logs=d.logs;
     if(d.bw)bw=d.bw;
-    if(d.routine&&typeof d.routine==='object'){ROUTINE=d.routine;save(K_ROUTINE,ROUTINE);}
-    save(K_LOGS,logs);save(K_BW,bw);
+    if(d.routine&&typeof d.routine==='object'){ROUTINE=d.routine;}
+    backfillMuscleGroups();
+    save(K_ROUTINE,ROUTINE);save(K_LOGS,logs);save(K_BW,bw);
     setSyncStatus('ok');
+    pushCloud();
   }catch{setSyncStatus('err');}
 }
 
