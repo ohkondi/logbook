@@ -310,46 +310,59 @@ let activeGroup=null,activeLift=null;
 /* ── default routine ── */
 const DEFAULT_ROUTINE={
   "Upper 1":[
-    ["Incline Bench Press","2×6–10",75,6],
-    ["Overhead Press","2×6–10",40,8],
-    ["Lat Pullover","2×6–10","",""],
-    ["Chest-Supported Row","2×6–10",80,10],
-    ["Cable Reverse Curls","2×8–12",17,15],
-    ["Close Grip Pushdown","2×8–12",33,12],
-    ["Reverse Fly","2×12–15",65,8],
+    ["Incline Bench Press","2×6–10",75,6,"Chest"],
+    ["Overhead Press","2×6–10",40,8,"Shoulders"],
+    ["Lat Pullover","2×6–10","","","Back"],
+    ["Chest-Supported Row","2×6–10",80,10,"Back"],
+    ["Cable Reverse Curls","2×8–12",17,15,"Arms"],
+    ["Close Grip Pushdown","2×8–12",33,12,"Arms"],
+    ["Reverse Fly","2×12–15",65,8,"Shoulders"],
   ],
   "Lower 1":[
-    ["Hack Squat","2×8–10",50,8],
-    ["Leg Extensions","2×10–12",80,12],
-    ["Hamstring Curls","2×12–15",50,17],
-    ["Calf Raises","3×12–15",100,12],
-    ["Ab Machine","2×15",45,12],
-    ["Lateral Raises","2×failure",12.5,12],
-    ["Heavy Shrugs","2×10–12",32.5,12],
+    ["Hack Squat","2×8–10",50,8,"Quads"],
+    ["Leg Extensions","2×10–12",80,12,"Quads"],
+    ["Hamstring Curls","2×12–15",50,17,"Hamstrings"],
+    ["Calf Raises","3×12–15",100,12,"Calves"],
+    ["Ab Machine","2×15",45,12,"Core"],
+    ["Lateral Raises","2×failure",12.5,12,"Shoulders"],
+    ["Heavy Shrugs","2×10–12",32.5,12,"Back"],
   ],
   "Upper 2":[
-    ["Overhead Press","2×6–10","",""],
-    ["Chest Fly","2×10–15",113,13],
-    ["Wide Lat Pulldown","2×6–10",90,6],
-    ["Chest Press","1×6–8",82,6],
-    ["Row","2×6–10",72,8],
-    ["JM Press","2×8–12",40,10],
-    ["Reverse Fly","2×12–15",45,""],
+    ["Overhead Press","2×6–10","","","Shoulders"],
+    ["Chest Fly","2×10–15",113,13,"Chest"],
+    ["Wide Lat Pulldown","2×6–10",90,6,"Back"],
+    ["Chest Press","1×6–8",82,6,"Chest"],
+    ["Row","2×6–10",72,8,"Back"],
+    ["JM Press","2×8–12",40,10,"Arms"],
+    ["Reverse Fly","2×12–15",45,"","Shoulders"],
   ],
   "Lower 2":[
-    ["Leg Extensions","2×10–12",50,""],
-    ["Hamstring Curls","2×12–15",45,""],
-    ["Calf Raises","3×12–15","",""],
-    ["Preacher Curls","2×8–12",25,""],
-    ["Single-Arm Alt. Curls (DB)","1×8–12","",""],
-    ["Ab Machine","2×15",80,""],
-    ["Lateral Raises","2×failure",10,""],
-    ["Heavy Shrugs","2×10–12",27.5,""],
+    ["Leg Extensions","2×10–12",50,"","Quads"],
+    ["Hamstring Curls","2×12–15",45,"","Hamstrings"],
+    ["Calf Raises","3×12–15","","","Calves"],
+    ["Preacher Curls","2×8–12",25,"","Arms"],
+    ["Single-Arm Alt. Curls (DB)","1×8–12","","","Arms"],
+    ["Ab Machine","2×15",80,"","Core"],
+    ["Lateral Raises","2×failure",10,"","Shoulders"],
+    ["Heavy Shrugs","2×10–12",27.5,"","Back"],
   ],
 };
 
 /* Load custom routine if saved, otherwise use default */
 let ROUTINE=load(K_ROUTINE,null)||JSON.parse(JSON.stringify(DEFAULT_ROUTINE));
+
+/* ── backfill muscle groups from DEFAULT_ROUTINE by name ── */
+(()=>{
+  const lookup={};
+  for(const w in DEFAULT_ROUTINE)DEFAULT_ROUTINE[w].forEach(ex=>{if(ex[4])lookup[ex[0]]=ex[4];});
+  let changed=false;
+  for(const w in ROUTINE){
+    ROUTINE[w].forEach(ex=>{
+      if(!ex[4]&&lookup[ex[0]]){ex[4]=lookup[ex[0]];changed=true;}
+    });
+  }
+  if(changed)save(K_ROUTINE,ROUTINE);
+})();
 let _routineTimer;
 function saveRoutine(){save(K_ROUTINE,ROUTINE);clearTimeout(_routineTimer);_routineTimer=setTimeout(pushCloud,3000);}
 
