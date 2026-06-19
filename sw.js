@@ -1,4 +1,4 @@
-const CACHE = 'logbook-v7';
+const CACHE = 'logbook-v8';
 const SHELL = ['./index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
